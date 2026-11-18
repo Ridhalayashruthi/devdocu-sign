@@ -1,12 +1,15 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Upload, FileText, Trash2, ShieldCheck } from "lucide-react";
+import { Upload, FileText, Trash2, ShieldCheck, PenTool } from "lucide-react";
+import SignaturePad from "@/components/SignaturePad";
 
 export default function Home() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [showSignModal, setShowSignModal] = useState(false);
+  const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (file: File) => {
@@ -35,6 +38,7 @@ export default function Home() {
     }
     setPdfFile(null);
     setPdfUrl(null);
+    setSignatureUrl(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
     }
@@ -104,7 +108,7 @@ export default function Home() {
         ) : (
           <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             {/* Document Toolbar */}
-            <div className="px-5 py-3 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+            <div className="px-5 py-3 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
               <div className="flex items-center gap-2 truncate">
                 <FileText className="w-4 h-4 text-blue-600 shrink-0" />
                 <span className="font-medium text-sm truncate">
@@ -114,13 +118,37 @@ export default function Home() {
                   ({((pdfFile?.size || 0) / 1024).toFixed(1)} KB)
                 </span>
               </div>
-              <button
-                onClick={handleRemoveFile}
-                className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                Remove PDF
-              </button>
+
+              <div className="flex items-center gap-2">
+                {signatureUrl && (
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 px-2.5 py-1 rounded-lg">
+                    <span className="text-[11px] font-medium text-slate-500">
+                      Saved:
+                    </span>
+                    <img
+                      src={signatureUrl}
+                      alt="Saved signature"
+                      className="h-6 object-contain"
+                    />
+                  </div>
+                )}
+
+                <button
+                  onClick={() => setShowSignModal(true)}
+                  className="flex items-center gap-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg transition-colors"
+                >
+                  <PenTool className="w-3.5 h-3.5" />
+                  {signatureUrl ? "Redraw Signature" : "Create Signature"}
+                </button>
+
+                <button
+                  onClick={handleRemoveFile}
+                  className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  Remove
+                </button>
+              </div>
             </div>
 
             {/* PDF Preview Frame */}
@@ -134,6 +162,17 @@ export default function Home() {
           </div>
         )}
       </main>
+
+      {/* Signature Pad Modal */}
+      {showSignModal && (
+        <SignaturePad
+          onSave={(dataUrl) => {
+            setSignatureUrl(dataUrl);
+            setShowSignModal(false);
+          }}
+          onCancel={() => setShowSignModal(false)}
+        />
+      )}
     </div>
   );
 }
