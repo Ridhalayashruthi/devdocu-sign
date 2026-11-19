@@ -1,7 +1,15 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { Upload, FileText, Trash2, ShieldCheck, PenTool } from "lucide-react";
+import {
+  Upload,
+  FileText,
+  Trash2,
+  ShieldCheck,
+  PenTool,
+  Download,
+} from "lucide-react";
+import { PDFDocument } from "pdf-lib";
 import SignaturePad from "@/components/SignaturePad";
 import PdfWorkspace, { SignaturePlacement } from "@/components/PdfWorkspace";
 
@@ -10,6 +18,7 @@ export default function Home() {
   const [isDragging, setIsDragging] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [placement, setPlacement] = useState<SignaturePlacement>({
     pageNumber: 1,
     xPercent: 0.55,
@@ -42,6 +51,65 @@ export default function Home() {
     }
   };
 
+  const handleDownloadSignedPdf = async () => {
+    if (!pdfFile || !signatureUrl) return;
+    try {
+      setIsExporting(true);
+
+      // 1. Load the original PDF bytes into pdf-lib
+      const existingPdfBytes = await pdfFile.arrayBuffer();
+      const pdfDoc = await PDFDocument.load(existingPdfBytes);
+
+      // 2. Embed the transparent PNG signature image
+      const pngImageBytes = await fetch(signatureUrl).then((res) =>
+        res.arrayBuffer()
+      );
+      const pngImage = await pdfDoc.embedPng(pngImageBytes);
+
+      // 3. Get the target page and calculate exact PDF coordinates
+      const pages = pdfDoc.getPages();
+      const targetPage = pages[placement.pageNumber - 1] || pages[0];
+      const { width: pageWidth, height: pageHeight } = targetPage.getSize();
+
+      const sigWidth = pageWidth * placement.widthPercent;
+      const aspectRatio = pngImage.height / pngImage.width;
+      const sigHeight = sigWidth * aspectRatio;
+
+      // Convert top-left HTML coordinates to bottom-left PDF coordinates
+      const x = pageWidth * placement.xPercent;
+      const y = pageHeight - pageHeight * placement.yPercent - sigHeight;
+
+      // 4. Draw signature onto the PDF page
+      targetPage.drawImage(pngImage, {
+        x,
+        y,
+        width: sigWidth,
+        height: sigHeight,
+      });
+
+      // 5. Serialize and trigger browser download
+      const signedPdfBytes = await pdfDoc.save();
+      const blob = new Blob([new Uint8Array(signedPdfBytes)], {
+        type: "application/pdf",
+      });
+      const downloadUrl = URL.createObjectURL(blob);
+
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      const baseName = pdfFile.name.replace(/\.pdf$/i, "");
+      link.download = `${baseName}_signed.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(downloadUrl);
+    } catch (error) {
+      console.error("Failed to export signed PDF:", error);
+      alert("Something went wrong while exporting the signed PDF.");
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       {/* Top Navbar */}
@@ -69,7 +137,7 @@ export default function Home() {
             onDragLeave={() => setIsDragging(false)}
             onDrop={handleDrop}
             onClick={() => fileInputRef.current?.click()}
-            className={`flex-1 min-h-[420px] border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-10 text-center cursor-pointer transition-all ${
+            className={`flex-1 min-h-105 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-10 text-center cursor-pointer transition-all ${
               isDragging
                 ? "border-blue-600 bg-blue-50/70"
                 : "border-slate-300 bg-white hover:border-blue-500 hover:bg-slate-50/50"
@@ -125,6 +193,17 @@ export default function Home() {
                   <PenTool className="w-3.5 h-3.5" />
                   {signatureUrl ? "Redraw Signature" : "Create Signature"}
                 </button>
+
+                {signatureUrl && (
+                  <button
+                    onClick={handleDownloadSignedPdf}
+                    disabled={isExporting}
+                    className="flex items-center gap-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-3.5 py-1.5 rounded-lg shadow-xs transition-colors"
+                  >
+                    <Download className="w-3.5 h-3.5" />
+                    {isExporting ? "Exporting..." : "Download Signed PDF"}
+                  </button>
+                )}
 
                 <button
                   onClick={handleRemoveFile}
