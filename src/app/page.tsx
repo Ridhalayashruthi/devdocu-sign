@@ -3,13 +3,19 @@
 import React, { useState, useRef } from "react";
 import { Upload, FileText, Trash2, ShieldCheck, PenTool } from "lucide-react";
 import SignaturePad from "@/components/SignaturePad";
+import PdfWorkspace, { SignaturePlacement } from "@/components/PdfWorkspace";
 
 export default function Home() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [showSignModal, setShowSignModal] = useState(false);
   const [signatureUrl, setSignatureUrl] = useState<string | null>(null);
+  const [placement, setPlacement] = useState<SignaturePlacement>({
+    pageNumber: 1,
+    xPercent: 0.55,
+    yPercent: 0.75,
+    widthPercent: 0.25,
+  });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (file: File) => {
@@ -17,11 +23,7 @@ export default function Home() {
       alert("Please upload a valid PDF file.");
       return;
     }
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl);
-    }
     setPdfFile(file);
-    setPdfUrl(URL.createObjectURL(file));
   };
 
   const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
@@ -33,11 +35,7 @@ export default function Home() {
   };
 
   const handleRemoveFile = () => {
-    if (pdfUrl) {
-      URL.revokeObjectURL(pdfUrl);
-    }
     setPdfFile(null);
-    setPdfUrl(null);
     setSignatureUrl(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = "";
@@ -62,7 +60,7 @@ export default function Home() {
 
       {/* Main Workspace */}
       <main className="flex-1 max-w-5xl w-full mx-auto p-6 flex flex-col">
-        {!pdfUrl ? (
+        {!pdfFile ? (
           <div
             onDragOver={(e) => {
               e.preventDefault();
@@ -112,27 +110,14 @@ export default function Home() {
               <div className="flex items-center gap-2 truncate">
                 <FileText className="w-4 h-4 text-blue-600 shrink-0" />
                 <span className="font-medium text-sm truncate">
-                  {pdfFile?.name}
+                  {pdfFile.name}
                 </span>
                 <span className="text-xs text-slate-500">
-                  ({((pdfFile?.size || 0) / 1024).toFixed(1)} KB)
+                  ({(pdfFile.size / 1024).toFixed(1)} KB)
                 </span>
               </div>
 
               <div className="flex items-center gap-2">
-                {signatureUrl && (
-                  <div className="flex items-center gap-2 bg-white border border-slate-200 px-2.5 py-1 rounded-lg">
-                    <span className="text-[11px] font-medium text-slate-500">
-                      Saved:
-                    </span>
-                    <img
-                      src={signatureUrl}
-                      alt="Saved signature"
-                      className="h-6 object-contain"
-                    />
-                  </div>
-                )}
-
                 <button
                   onClick={() => setShowSignModal(true)}
                   className="flex items-center gap-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg transition-colors"
@@ -151,14 +136,13 @@ export default function Home() {
               </div>
             </div>
 
-            {/* PDF Preview Frame */}
-            <div className="flex-1 min-h-[600px] bg-slate-200">
-              <iframe
-                src={pdfUrl}
-                title="PDF Preview"
-                className="w-full h-full min-h-[600px] border-0"
-              />
-            </div>
+            {/* Interactive PDF Canvas & Draggable Signature */}
+            <PdfWorkspace
+              pdfFile={pdfFile}
+              signatureUrl={signatureUrl}
+              placement={placement}
+              onPlacementChange={setPlacement}
+            />
           </div>
         )}
       </main>
