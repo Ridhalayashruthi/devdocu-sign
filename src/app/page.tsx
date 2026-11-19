@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from "react";
 import {
   Upload,
   FileText,
@@ -8,10 +8,11 @@ import {
   ShieldCheck,
   PenTool,
   Download,
-} from 'lucide-react';
-import { PDFDocument, StandardFonts, rgb } from 'pdf-lib';
-import SignaturePad from '@/components/SignaturePad';
-import PdfWorkspace, { SignaturePlacement } from '@/components/PdfWorkspace';
+} from "lucide-react";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
+import SignaturePad from "@/components/SignaturePad";
+import PdfWorkspace, { SignaturePlacement } from "@/components/PdfWorkspace";
+import SeoInfoSection from "@/components/SeoInfoSection";
 
 export default function Home() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
@@ -29,8 +30,8 @@ export default function Home() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileSelect = (file: File) => {
-    if (file.type !== 'application/pdf') {
-      alert('Please upload a valid PDF file.');
+    if (file.type !== "application/pdf") {
+      alert("Please upload a valid PDF file.");
       return;
     }
     setPdfFile(file);
@@ -48,7 +49,7 @@ export default function Home() {
     setPdfFile(null);
     setSignatureUrl(null);
     if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+      fileInputRef.current.value = "";
     }
   };
 
@@ -90,13 +91,13 @@ export default function Home() {
 
       if (placement.includeDate) {
         const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
-        const dateLabel = `Signed: ${new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric',
+        const dateLabel = `Signed: ${new Date().toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
         })}`;
         targetPage.drawText(dateLabel, {
-          x: x,
+          x,
           y: Math.max(10, y - 12),
           size: 9,
           font,
@@ -106,126 +107,132 @@ export default function Home() {
 
       const signedPdfBytes = await pdfDoc.save();
       const blob = new Blob([new Uint8Array(signedPdfBytes)], {
-        type: 'application/pdf',
+        type: "application/pdf",
       });
       const downloadUrl = URL.createObjectURL(blob);
 
-      const link = document.createElement('a');
+      const link = document.createElement("a");
       link.href = downloadUrl;
-      const baseName = pdfFile.name.replace(/\.pdf$/i, '');
+      const baseName = pdfFile.name.replace(/\.pdf$/i, "");
       link.download = `${baseName}_signed.pdf`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
       URL.revokeObjectURL(downloadUrl);
     } catch (error) {
-      console.error('Failed to export signed PDF:', error);
-      alert('Something went wrong while exporting the signed PDF.');
+      console.error("Failed to export signed PDF:", error);
+      alert("Something went wrong while exporting the signed PDF.");
     } finally {
       setIsExporting(false);
     }
   };
 
   return (
-    <div className='min-h-screen bg-slate-50 text-slate-900 flex flex-col'>
+    <div className="min-h-screen bg-slate-50 text-slate-900 flex flex-col">
       {/* Top Navbar */}
-      <header className='bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between'>
-        <div className='flex items-center gap-2'>
-          <div className='bg-blue-600 text-white p-2 rounded-lg'>
-            <FileText className='w-5 h-5' />
+      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="bg-blue-600 text-white p-2 rounded-lg">
+            <FileText className="w-5 h-5" />
           </div>
-          <span className='font-bold text-xl tracking-tight'>DevDocu-Sign</span>
+          <span className="font-bold text-xl tracking-tight">DevDocu-Sign</span>
         </div>
-        <div className='flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full'>
-          <ShieldCheck className='w-4 h-4' />
+        <div className="flex items-center gap-2 text-xs font-medium text-emerald-700 bg-emerald-50 border border-emerald-200 px-3 py-1.5 rounded-full">
+          <ShieldCheck className="w-4 h-4" />
           100% Client-Side & Private (Files Never Leave Your Browser)
         </div>
       </header>
 
       {/* Main Workspace */}
-      <main className='flex-1 max-w-5xl w-full mx-auto p-6 flex flex-col'>
+      <main className="flex-1 max-w-5xl w-full mx-auto p-6 flex flex-col">
         {!pdfFile ? (
-          <div
-            onDragOver={(e) => {
-              e.preventDefault();
-              setIsDragging(true);
-            }}
-            onDragLeave={() => setIsDragging(false)}
-            onDrop={handleDrop}
-            onClick={() => fileInputRef.current?.click()}
-            className={`flex-1 min-h-105 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-10 text-center cursor-pointer transition-all ${
-              isDragging
-                ? 'border-blue-600 bg-blue-50/70'
-                : 'border-slate-300 bg-white hover:border-blue-500 hover:bg-slate-50/50'
-            }`}
-          >
-            <input
-              ref={fileInputRef}
-              type='file'
-              accept='application/pdf'
-              className='hidden'
-              onChange={(e) => {
-                if (e.target.files && e.target.files[0]) {
-                  handleFileSelect(e.target.files[0]);
-                }
+          <>
+            {/* Upload Dropzone */}
+            <div
+              onDragOver={(e) => {
+                e.preventDefault();
+                setIsDragging(true);
               }}
-            />
-            <div className='bg-blue-100 text-blue-600 p-4 rounded-full mb-4'>
-              <Upload className='w-8 h-8' />
-            </div>
-            <h1 className='text-2xl font-semibold mb-2'>
-              Drop your PDF here to start signing
-            </h1>
-            <p className='text-slate-500 max-w-md mb-6 text-sm'>
-              Select or drag and drop any PDF document. Everything is processed
-              locally in your browser for maximum privacy.
-            </p>
-            <button
-              type='button'
-              className='bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm transition-colors'
+              onDragLeave={() => setIsDragging(false)}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={`min-h-96 border-2 border-dashed rounded-2xl flex flex-col items-center justify-center p-10 text-center cursor-pointer transition-all ${
+                isDragging
+                  ? "border-blue-600 bg-blue-50/70"
+                  : "border-slate-300 bg-white hover:border-blue-500 hover:bg-slate-50/50"
+              }`}
             >
-              Choose PDF File
-            </button>
-          </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={(e) => {
+                  if (e.target.files && e.target.files[0]) {
+                    handleFileSelect(e.target.files[0]);
+                  }
+                }}
+              />
+              <div className="bg-blue-100 text-blue-600 p-4 rounded-full mb-4">
+                <Upload className="w-8 h-8" />
+              </div>
+              <h1 className="text-2xl font-semibold mb-2">
+                Drop your PDF here to start signing
+              </h1>
+              <p className="text-slate-500 max-w-md mb-6 text-sm">
+                Select or drag and drop any PDF document. Everything is
+                processed locally in your browser for maximum privacy.
+              </p>
+              <button
+                type="button"
+                className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-6 py-2.5 rounded-lg shadow-sm transition-colors"
+              >
+                Choose PDF File
+              </button>
+            </div>
+
+            {/* Crawlable SEO Features & FAQ Section (Shown only on Landing Screen) */}
+            <SeoInfoSection />
+          </>
         ) : (
-          <div className='flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden'>
+          <div className="flex-1 flex flex-col bg-white border border-slate-200 rounded-2xl shadow-sm overflow-hidden">
             {/* Document Toolbar */}
-            <div className='px-5 py-3 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3'>
-              <div className='flex items-center gap-2 truncate'>
-                <FileText className='w-4 h-4 text-blue-600 shrink-0' />
-                <span className='font-medium text-sm truncate'>
+            <div className="px-5 py-3 bg-slate-100 border-b border-slate-200 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 truncate">
+                <FileText className="w-4 h-4 text-blue-600 shrink-0" />
+                <span className="font-medium text-sm truncate">
                   {pdfFile.name}
                 </span>
-                <span className='text-xs text-slate-500'>
+                <span className="text-xs text-slate-500">
                   ({(pdfFile.size / 1024).toFixed(1)} KB)
                 </span>
               </div>
 
-              <div className='flex items-center gap-2'>
+              <div className="flex items-center gap-2">
                 <button
                   onClick={() => setShowSignModal(true)}
-                  className='flex items-center gap-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg transition-colors'
+                  className="flex items-center gap-1.5 text-xs font-medium bg-blue-600 hover:bg-blue-700 text-white px-3.5 py-1.5 rounded-lg transition-colors"
                 >
-                  <PenTool className='w-3.5 h-3.5' />
-                  {signatureUrl ? 'Redraw Signature' : 'Create Signature'}
+                  <PenTool className="w-3.5 h-3.5" />
+                  {signatureUrl ? "Redraw Signature" : "Create Signature"}
                 </button>
 
                 {signatureUrl && (
                   <button
                     onClick={handleDownloadSignedPdf}
                     disabled={isExporting}
-                    className='flex items-center gap-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-3.5 py-1.5 rounded-lg shadow-xs transition-colors'
+                    className="flex items-center gap-1.5 text-xs font-medium bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white px-3.5 py-1.5 rounded-lg shadow-xs transition-colors"
                   >
-                    <Download className='w-3.5 h-3.5' />
-                    {isExporting ? 'Exporting...' : 'Download Signed PDF'}
+                    <Download className="w-3.5 h-3.5" />
+                    {isExporting ? "Exporting..." : "Download Signed PDF"}
                   </button>
                 )}
 
                 <button
                   onClick={handleRemoveFile}
-                  className='flex items-center gap-1.5 text-xs font-medium text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors'
+                  className="flex items-center gap-1.5 text-xs font-medium text-red-600 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
                 >
-                  <Trash2 className='w-3.5 h-3.5' />
+                  <Trash2 className="w-3.5 h-3.5" />
                   Remove
                 </button>
               </div>
