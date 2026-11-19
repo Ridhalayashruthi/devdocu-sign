@@ -4,14 +4,19 @@ import React, { useRef, useState, useEffect } from "react";
 import { Eraser, Check, X } from "lucide-react";
 
 interface SignaturePadProps {
+  initialSignature?: string | null;
   onSave: (signatureDataUrl: string) => void;
   onCancel: () => void;
 }
 
-export default function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
+export default function SignaturePad({
+  initialSignature,
+  onSave,
+  onCancel,
+}: SignaturePadProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [hasInk, setHasInk] = useState(false);
+  const [hasInk, setHasInk] = useState(Boolean(initialSignature));
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -19,12 +24,22 @@ export default function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    // Configure crisp ink stroke styling
-    ctx.strokeStyle = "#0f172a"; // Slate-900 ink
+    ctx.strokeStyle = "#0f172a";
     ctx.lineWidth = 2.5;
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
-  }, []);
+
+    // Pre-load existing signature if user clicked "Redraw Signature"
+    if (initialSignature) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        setHasInk(true);
+      };
+      img.src = initialSignature;
+    }
+  }, [initialSignature]);
 
   const getCoordinates = (
     e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>
@@ -96,10 +111,9 @@ export default function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-xl border border-slate-200 max-w-lg w-full overflow-hidden">
-        {/* Modal Header */}
         <div className="px-5 py-4 border-b border-slate-200 flex items-center justify-between">
           <h2 className="font-semibold text-lg text-slate-900">
-            Draw Your Signature
+            {initialSignature ? "Edit or Redraw Signature" : "Draw Your Signature"}
           </h2>
           <button
             onClick={onCancel}
@@ -109,7 +123,6 @@ export default function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
           </button>
         </div>
 
-        {/* Canvas Area */}
         <div className="p-5 bg-slate-50">
           <div className="bg-white border-2 border-dashed border-slate-300 rounded-xl overflow-hidden relative">
             <canvas
@@ -133,7 +146,6 @@ export default function SignaturePad({ onSave, onCancel }: SignaturePadProps) {
           </div>
         </div>
 
-        {/* Modal Footer */}
         <div className="px-5 py-4 bg-white border-t border-slate-200 flex items-center justify-between">
           <button
             type="button"

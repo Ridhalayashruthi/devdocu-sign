@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -8,8 +8,8 @@ import {
   ZoomIn,
   ZoomOut,
   Calendar,
-} from 'lucide-react';
-import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
+} from "lucide-react";
+import type { PDFDocumentProxy, RenderTask } from "pdfjs-dist";
 
 export interface SignaturePlacement {
   pageNumber: number;
@@ -38,20 +38,28 @@ export default function PdfWorkspace({
   const [numPages, setNumPages] = useState(1);
   const [currentPage, setCurrentPage] = useState(1);
   const [isDraggingSig, setIsDraggingSig] = useState(false);
+  const [isSelected, setIsSelected] = useState(true);
   const dragOffset = useRef({ x: 0, y: 0 });
 
-  const formattedDate = new Date().toLocaleDateString('en-GB', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
+  const formattedDate = new Date().toLocaleDateString("en-GB", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
   });
+
+  // Auto-select signature whenever a new or redrawn signature is saved
+  const [prevSignatureUrl, setPrevSignatureUrl] = useState<string | null>(signatureUrl);
+  if (signatureUrl !== prevSignatureUrl) {
+    setPrevSignatureUrl(signatureUrl);
+    if (signatureUrl) setIsSelected(true);
+  }
 
   useEffect(() => {
     let isMounted = true;
     const loadPdf = async () => {
       try {
-        const pdfjsLib = await import('pdfjs-dist');
-        pdfjsLib.GlobalWorkerOptions.workerSrc = '/pdf.worker.min.mjs';
+        const pdfjsLib = await import("pdfjs-dist");
+        pdfjsLib.GlobalWorkerOptions.workerSrc = "/pdf.worker.min.mjs";
 
         const arrayBuffer = await pdfFile.arrayBuffer();
         const loadingTask = pdfjsLib.getDocument({
@@ -65,7 +73,7 @@ export default function PdfWorkspace({
           setCurrentPage(1);
         }
       } catch (err) {
-        console.error('Failed to render PDF:', err);
+        console.error("Failed to render PDF:", err);
       }
     };
     loadPdf();
@@ -83,7 +91,7 @@ export default function PdfWorkspace({
       const viewport = page.getViewport({ scale: 1.5 });
       const canvas = canvasRef.current;
       if (!canvas) return;
-      const context = canvas.getContext('2d');
+      const context = canvas.getContext("2d");
       if (!context) return;
 
       canvas.height = viewport.height;
@@ -104,7 +112,9 @@ export default function PdfWorkspace({
   }, [pdfDoc, currentPage]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
-    if ((e.target as HTMLElement).closest('button')) return;
+    e.stopPropagation();
+    setIsSelected(true);
+    if ((e.target as HTMLElement).closest("button")) return;
     if (!containerRef.current) return;
     e.preventDefault();
     const rect = containerRef.current.getBoundingClientRect();
@@ -160,55 +170,57 @@ export default function PdfWorkspace({
   };
 
   return (
-    <div className='flex-1 flex flex-col bg-slate-200'>
+    <div className="flex-1 flex flex-col bg-slate-200">
       {/* Page Navigation Sub-bar */}
-      <div className='bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between text-xs text-slate-600'>
-        <div className='flex items-center gap-2'>
+      <div className="bg-white border-b border-slate-200 px-4 py-2 flex items-center justify-between text-xs text-slate-600">
+        <div className="flex items-center gap-2">
           <button
-            type='button'
+            type="button"
             disabled={currentPage <= 1}
             onClick={() => changePage(-1)}
-            className='p-1 rounded hover:bg-slate-100 disabled:opacity-40'
+            className="p-1 rounded hover:bg-slate-100 disabled:opacity-40"
           >
-            <ChevronLeft className='w-4 h-4' />
+            <ChevronLeft className="w-4 h-4" />
           </button>
-          <span className='font-medium'>
+          <span className="font-medium">
             Page {currentPage} of {numPages}
           </span>
           <button
-            type='button'
+            type="button"
             disabled={currentPage >= numPages}
             onClick={() => changePage(1)}
-            className='p-1 rounded hover:bg-slate-100 disabled:opacity-40'
+            className="p-1 rounded hover:bg-slate-100 disabled:opacity-40"
           >
-            <ChevronRight className='w-4 h-4' />
+            <ChevronRight className="w-4 h-4" />
           </button>
         </div>
 
         {signatureUrl ? (
-          <span className='text-blue-700 font-medium'>
-            Drag signature to move • Use toolbar above stamp to resize or add
-            date
+          <span className="text-blue-700 font-medium">
+            {isSelected
+              ? "Drag to move • Click outside signature to preview clean look"
+              : "Click signature anytime to resize or reposition"}
           </span>
         ) : (
-          <span className='text-slate-400'>
+          <span className="text-slate-400">
             Click &ldquo;Create Signature&rdquo; above to place your stamp
           </span>
         )}
       </div>
 
-      {/* Scrollable Page Canvas Stage */}
+      {/* Scrollable Page Canvas Stage (clicking empty area deselects signature) */}
       <div
-        className='flex-1 overflow-auto p-6 flex justify-center items-start'
+        className="flex-1 overflow-auto p-6 flex justify-center items-start"
+        onMouseDown={() => setIsSelected(false)}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
       >
         <div
           ref={containerRef}
-          className='relative shadow-lg bg-white select-none'
+          className="relative shadow-lg bg-white select-none"
         >
-          <canvas ref={canvasRef} className='max-w-full h-auto block' />
+          <canvas ref={canvasRef} className="max-w-full h-auto block" />
 
           {/* Draggable & Resizable Signature Overlay */}
           {signatureUrl && placement.pageNumber === currentPage && (
@@ -219,60 +231,64 @@ export default function PdfWorkspace({
                 top: `${placement.yPercent * 100}%`,
                 width: `${placement.widthPercent * 100}%`,
               }}
-              className={`absolute border-2 rounded-lg p-1.5 cursor-move transition-shadow ${
-                isDraggingSig
-                  ? 'border-blue-600 bg-blue-50/40 shadow-xl'
-                  : 'border-blue-500 border-dashed bg-blue-50/20 hover:bg-blue-50/40'
+              className={`absolute rounded-lg p-1.5 cursor-move transition-all ${
+                isSelected
+                  ? isDraggingSig
+                    ? "border-2 border-blue-600 bg-blue-50/40 shadow-xl"
+                    : "border-2 border-blue-500 border-dashed bg-blue-50/20 hover:bg-blue-50/40"
+                  : "border-2 border-transparent hover:border-blue-300/60"
               }`}
             >
-              {/* Floating Controls Above Signature */}
-              <div className='absolute -top-8 left-0 bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded-md flex items-center gap-1.5 shadow-md whitespace-nowrap'>
-                <Move className='w-3 h-3 text-blue-400' />
-                <button
-                  type='button'
-                  onClick={() => adjustSize(-0.04)}
-                  title='Shrink signature'
-                  className='hover:bg-slate-700 p-0.5 rounded'
-                >
-                  <ZoomOut className='w-3.5 h-3.5' />
-                </button>
-                <button
-                  type='button'
-                  onClick={() => adjustSize(0.04)}
-                  title='Enlarge signature'
-                  className='hover:bg-slate-700 p-0.5 rounded'
-                >
-                  <ZoomIn className='w-3.5 h-3.5' />
-                </button>
-                <span className='text-slate-600'>|</span>
-                <button
-                  type='button'
-                  onClick={() =>
-                    onPlacementChange({
-                      ...placement,
-                      includeDate: !placement.includeDate,
-                    })
-                  }
-                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors ${
-                    placement.includeDate
-                      ? 'bg-blue-600 text-white'
-                      : 'hover:bg-slate-700 text-slate-300'
-                  }`}
-                >
-                  <Calendar className='w-3 h-3' />
-                  Date
-                </button>
-              </div>
+              {/* Floating Controls Above Signature (Visible Only When Selected) */}
+              {isSelected && (
+                <div className="absolute -top-8 left-0 bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded-md flex items-center gap-1.5 shadow-md whitespace-nowrap z-10">
+                  <Move className="w-3 h-3 text-blue-400" />
+                  <button
+                    type="button"
+                    onClick={() => adjustSize(-0.04)}
+                    title="Shrink signature"
+                    className="hover:bg-slate-700 p-0.5 rounded"
+                  >
+                    <ZoomOut className="w-3.5 h-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => adjustSize(0.04)}
+                    title="Enlarge signature"
+                    className="hover:bg-slate-700 p-0.5 rounded"
+                  >
+                    <ZoomIn className="w-3.5 h-3.5" />
+                  </button>
+                  <span className="text-slate-600">|</span>
+                  <button
+                    type="button"
+                    onClick={() =>
+                      onPlacementChange({
+                        ...placement,
+                        includeDate: !placement.includeDate,
+                      })
+                    }
+                    className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors ${
+                      placement.includeDate
+                        ? "bg-blue-600 text-white"
+                        : "hover:bg-slate-700 text-slate-300"
+                    }`}
+                  >
+                    <Calendar className="w-3 h-3" />
+                    Date
+                  </button>
+                </div>
+              )}
 
               <img
                 src={signatureUrl}
-                alt='Placed signature'
+                alt="Placed signature"
                 draggable={false}
-                className='w-full h-auto pointer-events-none'
+                className="w-full h-auto pointer-events-none"
               />
 
               {placement.includeDate && (
-                <div className='text-[11px] font-mono text-slate-800 text-left pl-1 pt-1 mt-0.5 border-t border-slate-300/80 pointer-events-none'>
+                <div className="text-[11px] font-mono text-slate-800 text-left pl-1 pt-1 mt-0.5 border-t border-slate-300/80 pointer-events-none">
                   Signed: {formattedDate}
                 </div>
               )}
