@@ -9,7 +9,7 @@ import {
   PenTool,
   Download,
 } from "lucide-react";
-import { PDFDocument } from "pdf-lib";
+import { PDFDocument, StandardFonts, rgb } from "pdf-lib";
 import SignaturePad from "@/components/SignaturePad";
 import PdfWorkspace, { SignaturePlacement } from "@/components/PdfWorkspace";
 
@@ -24,6 +24,7 @@ export default function Home() {
     xPercent: 0.55,
     yPercent: 0.75,
     widthPercent: 0.25,
+    includeDate: false,
   });
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -68,7 +69,7 @@ export default function Home() {
 
       // 3. Get the target page and calculate exact PDF coordinates
       const pages = pdfDoc.getPages();
-      const targetPage = pages[placement.pageNumber - 1] || pages[0];
+      const targetPage = pages[placement.pageNumber - 1] || pages;
       const { width: pageWidth, height: pageHeight } = targetPage.getSize();
 
       const sigWidth = pageWidth * placement.widthPercent;
@@ -87,7 +88,23 @@ export default function Home() {
         height: sigHeight,
       });
 
-      // 5. Serialize and trigger browser download
+      if (placement.includeDate) {
+        const font = await pdfDoc.embedFont(StandardFonts.Helvetica);
+        const dateLabel = `Signed: ${new Date().toLocaleDateString("en-GB", {
+          day: "2-digit",
+          month: "short",
+          year: "numeric",
+        })}`;
+        targetPage.drawText(dateLabel, {
+          x: x,
+          y: Math.max(10, y - 12),
+          size: 9,
+          font,
+          color: rgb(0.15, 0.2, 0.28),
+        });
+      }
+
+
       const signedPdfBytes = await pdfDoc.save();
       const blob = new Blob([new Uint8Array(signedPdfBytes)], {
         type: "application/pdf",

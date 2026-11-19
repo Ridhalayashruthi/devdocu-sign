@@ -1,7 +1,14 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
-import { ChevronLeft, ChevronRight, Move } from 'lucide-react';
+import {
+  ChevronLeft,
+  ChevronRight,
+  Move,
+  ZoomIn,
+  ZoomOut,
+  Calendar,
+} from 'lucide-react';
 import type { PDFDocumentProxy, RenderTask } from 'pdfjs-dist';
 
 export interface SignaturePlacement {
@@ -9,6 +16,7 @@ export interface SignaturePlacement {
   xPercent: number;
   yPercent: number;
   widthPercent: number;
+  includeDate: boolean;
 }
 
 interface PdfWorkspaceProps {
@@ -32,7 +40,12 @@ export default function PdfWorkspace({
   const [isDraggingSig, setIsDraggingSig] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
 
-  // 1. Load PDF document using bundled pdfjs worker
+  const formattedDate = new Date().toLocaleDateString('en-GB', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  });
+
   useEffect(() => {
     let isMounted = true;
     const loadPdf = async () => {
@@ -91,6 +104,7 @@ export default function PdfWorkspace({
   }, [pdfDoc, currentPage]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLDivElement>) => {
+    if ((e.target as HTMLElement).closest('button')) return;
     if (!containerRef.current) return;
     e.preventDefault();
     const rect = containerRef.current.getBoundingClientRect();
@@ -132,6 +146,19 @@ export default function PdfWorkspace({
     onPlacementChange({ ...placement, pageNumber: next });
   };
 
+  const adjustSize = (delta: number) => {
+    const nextWidth = Math.max(
+      0.1,
+      Math.min(0.6, Number((placement.widthPercent + delta).toFixed(2)))
+    );
+    const clampedX = Math.min(1 - nextWidth, placement.xPercent);
+    onPlacementChange({
+      ...placement,
+      widthPercent: nextWidth,
+      xPercent: clampedX,
+    });
+  };
+
   return (
     <div className='flex-1 flex flex-col bg-slate-200'>
       {/* Page Navigation Sub-bar */}
@@ -160,7 +187,8 @@ export default function PdfWorkspace({
 
         {signatureUrl ? (
           <span className='text-blue-700 font-medium'>
-            Tip: Drag your signature box anywhere on the page
+            Drag signature to move • Use toolbar above stamp to resize or add
+            date
           </span>
         ) : (
           <span className='text-slate-400'>
@@ -182,7 +210,7 @@ export default function PdfWorkspace({
         >
           <canvas ref={canvasRef} className='max-w-full h-auto block' />
 
-          {/* Draggable Signature Overlay */}
+          {/* Draggable & Resizable Signature Overlay */}
           {signatureUrl && placement.pageNumber === currentPage && (
             <div
               onMouseDown={handleMouseDown}
@@ -191,22 +219,63 @@ export default function PdfWorkspace({
                 top: `${placement.yPercent * 100}%`,
                 width: `${placement.widthPercent * 100}%`,
               }}
-              className={`absolute border-2 rounded-lg p-1 cursor-move transition-shadow group ${
+              className={`absolute border-2 rounded-lg p-1.5 cursor-move transition-shadow ${
                 isDraggingSig
                   ? 'border-blue-600 bg-blue-50/40 shadow-xl'
                   : 'border-blue-500 border-dashed bg-blue-50/20 hover:bg-blue-50/40'
               }`}
             >
-              <div className='absolute -top-6 left-0 bg-blue-600 text-white text-[10px] font-medium px-2 py-0.5 rounded flex items-center gap-1 shadow-xs'>
-                <Move className='w-3 h-3' />
-                Drag to position
+              {/* Floating Controls Above Signature */}
+              <div className='absolute -top-8 left-0 bg-slate-900 text-white text-[10px] font-medium px-2 py-1 rounded-md flex items-center gap-1.5 shadow-md whitespace-nowrap'>
+                <Move className='w-3 h-3 text-blue-400' />
+                <button
+                  type='button'
+                  onClick={() => adjustSize(-0.04)}
+                  title='Shrink signature'
+                  className='hover:bg-slate-700 p-0.5 rounded'
+                >
+                  <ZoomOut className='w-3.5 h-3.5' />
+                </button>
+                <button
+                  type='button'
+                  onClick={() => adjustSize(0.04)}
+                  title='Enlarge signature'
+                  className='hover:bg-slate-700 p-0.5 rounded'
+                >
+                  <ZoomIn className='w-3.5 h-3.5' />
+                </button>
+                <span className='text-slate-600'>|</span>
+                <button
+                  type='button'
+                  onClick={() =>
+                    onPlacementChange({
+                      ...placement,
+                      includeDate: !placement.includeDate,
+                    })
+                  }
+                  className={`flex items-center gap-1 px-1.5 py-0.5 rounded transition-colors ${
+                    placement.includeDate
+                      ? 'bg-blue-600 text-white'
+                      : 'hover:bg-slate-700 text-slate-300'
+                  }`}
+                >
+                  <Calendar className='w-3 h-3' />
+                  Date
+                </button>
               </div>
+
               <img
                 src={signatureUrl}
                 alt='Placed signature'
                 draggable={false}
                 className='w-full h-auto pointer-events-none'
               />
+
+              {placement.includeDate && (
+                <div className='text-[11px] font-mono text-slate-800 text-left pl-1 pt-1 mt-0.5 border-t border-slate-300/80 pointer-events-none'>
+                  Signed: {formattedDate}
+                </div>
+              )}
             </div>
           )}
         </div>
